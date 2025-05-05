@@ -1,0 +1,351 @@
+#!/bin/bash
+
+# Define ANSI escape codes for formatting
+NORMAL="\e[0m"
+BOLD="\e[1m"
+DIM="\e[2m"       # Often looks like normal or bold depending on terminal
+ITALIC="\e[3m"    # Support varies between terminals
+UNDERLINE="\e[4m"
+BLINK="\e[5m"     # Often not supported or shown as background change
+REVERSE="\e[7m"   # Swaps foreground and background
+HIDDEN="\e[8m"    # Text is invisible
+STRIKETHROUGH="\e[9m" # Support varies between terminals
+
+# Define ANSI escape codes for standard colors (foreground and background)
+declare -A standard_colors_fg=(
+    [black]="30" [red]="31" [green]="32" [yellow]="33"
+    [blue]="34" [magenta]="35" [cyan]="36" [white]="37"
+)
+declare -A standard_colors_bg=(
+    [black]="40" [red]="41" [green]="42" [yellow]="43"
+    [blue]="44" [magenta]="45" [cyan]="46" [white]="47"
+)
+
+# Define ANSI escape codes for bright colors (foreground and background)
+declare -A bright_colors_fg=(
+    [black]="90" [red]="91" [green]="92" [yellow]="93"
+    [blue]="94" [magenta]="95" [cyan]="96" [white]="97"
+)
+declare -A bright_colors_bg=(
+    [black]="100" [red]="101" [green]="102" [yellow]="103"
+    [blue]="104" [magenta]="105" [cyan]="106" [white]="107"
+)
+
+# Map format names to their codes
+declare -A ALL_FORMATS=(
+    [Normal]="$NORMAL" [Bold]="$BOLD" [Dim]="$DIM" [Italic]="$ITALIC"
+    [Underline]="$UNDERLINE" [Blink]="$BLINK" [Reverse]="$REVERSE"
+    [Hidden]="$HIDDEN" [Strikethrough]="$STRIKETHROUGH"
+    # Add aliases if needed, e.g. [Default]="$NORMAL"
+)
+DEFAULT_COLUMNS=("Normal" "Bold" "Italic" "Underline")
+
+# Sample text
+SAMPLE_TEXT="Sample Text"
+SELECTED_COLUMNS=()
+USE_COLUMNS=false
+
+# Check if the first argument starts with --column or --columns
+if [[ "$1" =~ ^--col(umn|umns) ]]; then
+    USE_COLUMNS=true
+    COLUMN_LIST_STR=""
+    # Check if there's an '=' sign for --columns=list format
+    if [[ "$1" == *=* ]]; then
+        COLUMN_LIST_STR="${1#*=}"
+    # Check if $2 exists and is not another option for --columns list format
+    elif [[ -n "$2" && ! "$2" =~ ^- ]]; then
+        COLUMN_LIST_STR="$2"
+        shift # Consume the list argument ($2)
+    else
+        # No list provided after --columns, use default
+        COLUMN_LIST_STR=$(IFS=:; echo "${DEFAULT_COLUMNS[*]}")
+    fi
+    shift # Consume the --column(s) argument ($1)
+
+    # Parse the list string into the array
+    IFS=':' read -r -a SELECTED_COLUMNS <<< "$COLUMN_LIST_STR"
+
+    # Validate selected columns and handle empty list case
+    VALID_COLUMNS=()
+    INVALID_COLUMNS=()
+    if [[ ${#SELECTED_COLUMNS[@]} -eq 0 || "$COLUMN_LIST_STR" == "" ]]; then
+         # If parsing resulted in empty array or empty string, use default
+         SELECTED_COLUMNS=("${DEFAULT_COLUMNS[@]}")
+         VALID_COLUMNS=("${DEFAULT_COLUMNS[@]}")
+    else
+        for col in "${SELECTED_COLUMNS[@]}"; do
+            if [[ -v ALL_FORMATS["$col"] ]]; then
+                VALID_COLUMNS+=("$col")
+            else
+                INVALID_COLUMNS+=("$col")
+            fi
+        done
+        SELECTED_COLUMNS=("${VALID_COLUMNS[@]}") # Use only valid columns
+        if [[ ${#SELECTED_COLUMNS[@]} -eq 0 ]]; then # If no valid columns remain
+             echo "Warning: No valid columns specified. Using default." >&2
+             SELECTED_COLUMNS=("${DEFAULT_COLUMNS[@]}")
+        fi
+        if [[ ${#INVALID_COLUMNS[@]} -gt 0 ]]; then
+             echo "Warning: Ignoring invalid column names: ${INVALID_COLUMNS[*]}" >&2
+        fi
+    fi
+else
+    # Not using columns or some other argument was provided first
+    :
+fi
+
+
+# Function to print samples in single-line format
+print_single_line() {
+    local format_code="$1"
+    local format_name="$2"
+    local fg_code="$3"
+    local bg_code="$4"
+    local fg_name="$5"
+    local bg_name="$6"
+    local color_type="$7" # "Standard" or "Bright"
+
+    local fg_info="${color_type} ${fg_name}"
+    local bg_info="${color_type} ${bg_name}"
+
+    local info=""
+    if [[ -z "$fg_code" && -z "$bg_code" ]]; then
+         info="(FG default, BG default)"
+    elif [[ -z "$fg_code" ]]; then
+         info="(FG default, BG ${bg_info})"
+    elif [[ -z "$bg_code" ]]; then
+         info="(FG ${fg_info}, BG default)"
+    else
+         info="(FG ${fg_info}, BG ${bg_info})"
+    fi
+
+
+    echo -e "${format_code}\e[${fg_code};${bg_code}m${SAMPLE_TEXT}${NORMAL} ${info}"
+}
+
+
+if [[ "$USE_COLUMNS" == true ]]; then
+    VISIBLE_TEXT_LENGTH=${#SAMPLE_TEXT}
+    PADDING_SPACES=$((COLUMN_WIDTH - VISIBLE_TEXT_LENGTH))
+    NUM_COLUMNS=${#SELECTED_COLUMNS[@]}
+
+    echo "--- Columnar Display of Standard Colors and Basic Formats ---"
+    # Print header row dynamically
+    HEADER_FORMAT=""
+    for (( i=0; i<NUM_COLUMNS; i++ )); do
+        HEADER_FORMAT+="%-*s"
+    done
+    HEADER_FORMAT+="%s\n" # For the Color Setting column
+    # Prepare arguments for printf: width followed by column name for each column
+    printf_args=()
+    for col_name in "${SELECTED_COLUMNS[@]}"; do
+        printf_args+=("$COLUMN_WIDTH" "$col_name")
+    done
+    printf_args+=("Color Setting") # Add the last column name
+    # Print header with correct arguments for dynamic width
+    printf "$HEADER_FORMAT" "${printf_args[@]}"
+
+    # Print separator line dynamically
+    for (( i=0; i<NUM_COLUMNS; i++ )); do
+        printf "%0.s-" $(seq 1 $COLUMN_WIDTH)
+    done
+    printf "%0.s-" $(seq 1 40) # Separator for the info column
+    printf "\n"
+
+    # Add "default" to the list of names for iteration
+    standard_fg_names=("default" "${!standard_colors_fg[@]}")
+    standard_bg_names=("default" "${!standard_colors_bg[@]}")
+
+    for bg_name in "${standard_bg_names[@]}"; do
+        bg_code="${standard_colors_bg[$bg_name]}" # This will be empty if bg_name is "default"
+
+        for fg_name in "${standard_fg_names[@]}"; do
+            fg_code="${standard_colors_fg[$fg_name]}" # This will be empty if fg_name is "default"
+
+            # Handle 'default' display name
+            display_fg_name="${fg_name}"
+            display_bg_name="${bg_name}"
+            [[ "$fg_name" == "default" ]] && display_fg_name="default"
+            [[ "$bg_name" == "default" ]] && display_bg_name="default"
+
+            info="(FG Standard ${display_fg_name}, BG Standard ${display_bg_name})"
+
+            # Construct escape sequence, handling empty codes
+            esc_seq=""
+            [[ -n "$fg_code" ]] && esc_seq="${fg_code}"
+            [[ -n "$bg_code" ]] && { [[ -n "$esc_seq" ]] && esc_seq+=";" ; esc_seq+="${bg_code}"; }
+
+            # Print selected format columns with padding
+            for format_name in "${SELECTED_COLUMNS[@]}"; do
+                format_code="${ALL_FORMATS[$format_name]}"
+                # Special handling for Hidden text
+                text_to_print="$SAMPLE_TEXT"
+                [[ "$format_name" == "Hidden" ]] && text_to_print="Hidden Text"
+
+                # Calculate padding needed for this specific text
+                current_padding=$((COLUMN_WIDTH - ${#text_to_print}))
+                [[ $current_padding -lt 0 ]] && current_padding=0 # Ensure padding isn't negative
+                padding_str=$(printf "%*s" $current_padding "")
+
+                # Print formatted text and padding together
+                printf "%b%s" "${format_code}\e[${esc_seq}m${text_to_print}${NORMAL}" "$padding_str"
+            done
+
+            # Print Info column and newline
+            printf "%s\n" "$info"
+         done
+     done
+
+
+    # Bright Color Combinations
+    echo -e "\n--- Columnar Display of Bright Colors and Basic Formats ---"
+    # Print header row dynamically
+    HEADER_FORMAT=""
+    for (( i=0; i<NUM_COLUMNS; i++ )); do
+        HEADER_FORMAT+="%-*s"
+    done
+    HEADER_FORMAT+="%s\n" # For the Color Setting column
+    # Prepare arguments for printf: width followed by column name for each column
+    printf_args=()
+    for col_name in "${SELECTED_COLUMNS[@]}"; do
+        printf_args+=("$COLUMN_WIDTH" "$col_name")
+    done
+    printf_args+=("Color Setting") # Add the last column name
+    # Print header with correct arguments for dynamic width
+    printf "$HEADER_FORMAT" "${printf_args[@]}"
+
+    # Print separator line dynamically
+    for (( i=0; i<NUM_COLUMNS; i++ )); do
+        printf "%0.s-" $(seq 1 $COLUMN_WIDTH)
+    done
+    printf "%0.s-" $(seq 1 40) # Separator for the info column
+    printf "\n"
+
+    bright_fg_names=("default" "${!bright_colors_fg[@]}")
+    bright_bg_names=("default" "${!bright_colors_bg[@]}")
+
+    for bg_name in "${bright_bg_names[@]}"; do
+        bg_code="${bright_colors_bg[$bg_name]}" # This will be empty if bg_name is "default"
+
+        for fg_name in "${bright_fg_names[@]}"; do
+            fg_code="${bright_colors_fg[$fg_name]}" # This will be empty if fg_name is "default"
+
+            # Handle 'default' display name
+            display_fg_name="${fg_name}"
+            display_bg_name="${bg_name}"
+            [[ "$fg_name" == "default" ]] && display_fg_name="default"
+            [[ "$bg_name" == "default" ]] && display_bg_name="default"
+
+            info="(FG Bright ${display_fg_name}, BG Bright ${display_bg_name})"
+
+            # Construct escape sequence, handling empty codes
+            esc_seq=""
+            [[ -n "$fg_code" ]] && esc_seq="${fg_code}"
+            [[ -n "$bg_code" ]] && { [[ -n "$esc_seq" ]] && esc_seq+=";" ; esc_seq+="${bg_code}"; }
+
+            # Print selected format columns with padding
+            for format_name in "${SELECTED_COLUMNS[@]}"; do
+                format_code="${ALL_FORMATS[$format_name]}"
+                 # Special handling for Hidden text
+                text_to_print="$SAMPLE_TEXT"
+                [[ "$format_name" == "Hidden" ]] && text_to_print="Hidden Text"
+
+                # Calculate padding needed for this specific text
+                current_padding=$((COLUMN_WIDTH - ${#text_to_print}))
+                [[ $current_padding -lt 0 ]] && current_padding=0 # Ensure padding isn't negative
+                padding_str=$(printf "%*s" $current_padding "")
+
+                # Print formatted text and padding together
+                printf "%b%s" "${format_code}\e[${esc_seq}m${text_to_print}${NORMAL}" "$padding_str"
+            done
+
+            # Print Info column and newline
+            printf "%s\n" "$info"
+         done
+     done
+
+
+else
+    # Original single-line output
+    echo "--- Standard Colors and Basic Formats ---"
+
+    # Iterate through formats
+    for format_name in "Normal" "Bold" "Italic" "Underline"; do
+        format_code=""
+        case "$format_name" in
+            "Normal") format_code="${NORMAL}";;
+            "Bold") format_code="${BOLD}";;
+            "Italic") format_code="${ITALIC}";;
+            "Underline") format_code="${UNDERLINE}";;
+        esac
+
+        echo -e "\n--- Format: $format_name ---"
+
+        # Standard Foreground Colors (default background)
+        for fg_name in "${!standard_colors_fg[@]}"; do
+            fg_code="${standard_colors_fg[$fg_name]}"
+            print_single_line "$format_code" "$format_name" "$fg_code" "" "$fg_name" "default" "Standard"
+        done
+
+        # Standard Background Colors (default foreground)
+        echo -e "\n"
+        for bg_name in "${!standard_colors_bg[@]}"; do
+            bg_code="${standard_colors_bg[$bg_name]}"
+            print_single_line "$format_code" "$format_name" "" "$bg_code" "default" "$bg_name" "Standard"
+        done
+
+        # Standard Foreground and Background Combinations
+        echo -e "\n"
+         for fg_name in "${!standard_colors_fg[@]}"; do
+            fg_code="${standard_colors_fg[$fg_name]}"
+             for bg_name in "${!standard_colors_bg[@]}"; do
+                 bg_code="${standard_colors_bg[$bg_name]}"
+                 print_single_line "$format_code" "$format_name" "$fg_code" "$bg_code" "$fg_name" "$bg_name" "Standard"
+             done
+         done
+    done
+
+    # Add other formats section for single-line output
+    echo -e "\n--- Other Formats (default colors) ---"
+    echo -e "${DIM}${SAMPLE_TEXT}${NORMAL} (Dim, FG default, BG default)"
+    echo -e "${BLINK}${SAMPLE_TEXT}${NORMAL} (Blink, FG default, BG default)"
+    echo -e "${REVERSE}${SAMPLE_TEXT}${NORMAL} (Reverse, FG default, BG default)"
+    echo -e "${HIDDEN}Hidden Text${NORMAL} (Hidden, FG default, BG default)"
+    echo -e "${STRIKETHROUGH}${SAMPLE_TEXT}${NORMAL} (Strikethrough, FG default, BG default)"
+
+
+    echo -e "\n--- Bright Colors ---"
+
+    # Bright Foreground Colors (default background)
+    echo -e "\n--- Bright Foreground Colors ---"
+    for fg_name in "${!bright_colors_fg[@]}"; do
+        fg_code="${bright_colors_fg[$fg_name]}"
+        print_single_line "" "Normal" "$fg_code" "" "Bright ${fg_name}" "default" "Bright"
+    done
+
+    # Bright Background Colors (default foreground)
+    echo -e "\n--- Bright Background Colors ---"
+    for bg_name in "${!bright_colors_bg[@]}"; do
+        bg_code="${bright_colors_bg[$bg_name]}"
+        print_single_line "" "Normal" "" "$bg_code" "default" "Bright ${bg_name}" "Bright"
+    done
+
+    # Bright Foreground and Background Combinations
+    echo -e "\n--- Bright Foreground and Background Combinations ---"
+     for fg_name in "${!bright_colors_fg[@]}"; do
+        fg_code="${bright_colors_fg[$fg_name]}"
+         for bg_name in "${!bright_colors_bg[@]}"; do
+             bg_code="${bright_colors_bg[$bg_name]}"
+             print_single_line "" "Normal" "$fg_code" "$bg_code" "Bright ${fg_name}" "Bright ${bg_name}" "Bright"
+         done
+     done
+
+    # Removed the duplicate "Other Formats" section from here as it was added earlier
+
+    echo -e "\n--- Combined Formats (default colors unless specified) ---"
+    echo -e "${BOLD}${UNDERLINE}${SAMPLE_TEXT}${NORMAL} (Bold, Underlined, FG default, BG default)"
+    echo -e "${ITALIC}${BOLD}\e[31m${SAMPLE_TEXT}${NORMAL} (Bold, Italic, Red FG, BG default)" # Combine with color
+
+    echo -e "\n--- End of Samples ---"
+
+fi
