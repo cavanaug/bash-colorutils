@@ -45,6 +45,9 @@ SAMPLE_TEXT="Sample Text"
 SELECTED_COLUMNS=()
 USE_COLUMNS=false
 
+# Define column width for columnar display
+COLUMN_WIDTH=15
+
 # Check if the first argument starts with --column or --columns
 if [[ "$1" =~ ^--col(umn|umns) ]]; then
     USE_COLUMNS=true
