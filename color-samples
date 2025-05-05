@@ -3,12 +3,12 @@
 # Define ANSI escape codes for formatting
 NORMAL="\e[0m"
 BOLD="\e[1m"
-DIM="\e[2m"       # Often looks like normal or bold depending on terminal
-ITALIC="\e[3m"    # Support varies between terminals
+DIM="\e[2m"    # Often looks like normal or bold depending on terminal
+ITALIC="\e[3m" # Support varies between terminals
 UNDERLINE="\e[4m"
-BLINK="\e[5m"     # Often not supported or shown as background change
-REVERSE="\e[7m"   # Swaps foreground and background
-HIDDEN="\e[8m"    # Text is invisible
+BLINK="\e[5m"         # Often not supported or shown as background change
+REVERSE="\e[7m"       # Swaps foreground and background
+HIDDEN="\e[8m"        # Text is invisible
 STRIKETHROUGH="\e[9m" # Support varies between terminals
 
 # Define ANSI escape codes for standard colors (foreground and background)
@@ -61,20 +61,23 @@ if [[ "$1" =~ ^--col(umn|umns) ]]; then
         shift # Consume the list argument ($2)
     else
         # No list provided after --columns, use default
-        COLUMN_LIST_STR=$(IFS=:; echo "${DEFAULT_COLUMNS[*]}")
+        COLUMN_LIST_STR=$(
+            IFS=:
+            echo "${DEFAULT_COLUMNS[*]}"
+        )
     fi
     shift # Consume the --column(s) argument ($1)
 
     # Parse the list string into the array
-    IFS=':' read -r -a SELECTED_COLUMNS <<< "$COLUMN_LIST_STR"
+    IFS=':' read -r -a SELECTED_COLUMNS <<<"$COLUMN_LIST_STR"
 
     # Validate selected columns and handle empty list case
     VALID_COLUMNS=()
     INVALID_COLUMNS=()
     if [[ ${#SELECTED_COLUMNS[@]} -eq 0 || "$COLUMN_LIST_STR" == "" ]]; then
-         # If parsing resulted in empty array or empty string, use default
-         SELECTED_COLUMNS=("${DEFAULT_COLUMNS[@]}")
-         VALID_COLUMNS=("${DEFAULT_COLUMNS[@]}")
+        # If parsing resulted in empty array or empty string, use default
+        SELECTED_COLUMNS=("${DEFAULT_COLUMNS[@]}")
+        VALID_COLUMNS=("${DEFAULT_COLUMNS[@]}")
     else
         for col in "${SELECTED_COLUMNS[@]}"; do
             if [[ -v ALL_FORMATS["$col"] ]]; then
@@ -83,20 +86,19 @@ if [[ "$1" =~ ^--col(umn|umns) ]]; then
                 INVALID_COLUMNS+=("$col")
             fi
         done
-        SELECTED_COLUMNS=("${VALID_COLUMNS[@]}") # Use only valid columns
+        SELECTED_COLUMNS=("${VALID_COLUMNS[@]}")     # Use only valid columns
         if [[ ${#SELECTED_COLUMNS[@]} -eq 0 ]]; then # If no valid columns remain
-             echo "Warning: No valid columns specified. Using default." >&2
-             SELECTED_COLUMNS=("${DEFAULT_COLUMNS[@]}")
+            echo "Warning: No valid columns specified. Using default." >&2
+            SELECTED_COLUMNS=("${DEFAULT_COLUMNS[@]}")
         fi
         if [[ ${#INVALID_COLUMNS[@]} -gt 0 ]]; then
-             echo "Warning: Ignoring invalid column names: ${INVALID_COLUMNS[*]}" >&2
+            echo "Warning: Ignoring invalid column names: ${INVALID_COLUMNS[*]}" >&2
         fi
     fi
 else
     # Not using columns or some other argument was provided first
     :
 fi
-
 
 # Function to print samples in single-line format
 print_single_line() {
@@ -113,19 +115,17 @@ print_single_line() {
 
     local info=""
     if [[ -z "$fg_code" && -z "$bg_code" ]]; then
-         info="(BG default, FG default)"
+        info="(BG default, FG default)"
     elif [[ -z "$fg_code" ]]; then
-         info="(BG ${bg_info}, FG default)"
+        info="(BG ${bg_info}, FG default)"
     elif [[ -z "$bg_code" ]]; then
-         info="(BG default, FG ${fg_info})"
+        info="(BG default, FG ${fg_info})"
     else
-         info="(BG ${bg_info}, FG ${fg_info})"
+        info="(BG ${bg_info}, FG ${fg_info})"
     fi
-
 
     echo -e "${format_code}\e[${fg_code};${bg_code}m${SAMPLE_TEXT}${NORMAL} ${info}"
 }
-
 
 if [[ "$USE_COLUMNS" == true ]]; then
     VISIBLE_TEXT_LENGTH=${#SAMPLE_TEXT}
@@ -135,7 +135,7 @@ if [[ "$USE_COLUMNS" == true ]]; then
     echo "--- Columnar Display of Standard Colors and Basic Formats ---"
     # Print header row dynamically
     HEADER_FORMAT=""
-    for (( i=0; i<NUM_COLUMNS; i++ )); do
+    for ((i = 0; i < NUM_COLUMNS; i++)); do
         HEADER_FORMAT+="%-*s"
     done
     HEADER_FORMAT+="%s\n" # For the Color Setting column
@@ -149,7 +149,7 @@ if [[ "$USE_COLUMNS" == true ]]; then
     printf "$HEADER_FORMAT" "${printf_args[@]}"
 
     # Print separator line dynamically
-    for (( i=0; i<NUM_COLUMNS; i++ )); do
+    for ((i = 0; i < NUM_COLUMNS; i++)); do
         printf "%0.s-" $(seq 1 $COLUMN_WIDTH)
     done
     printf "%0.s-" $(seq 1 40) # Separator for the info column
@@ -171,12 +171,15 @@ if [[ "$USE_COLUMNS" == true ]]; then
             [[ "$fg_name" == "default" ]] && display_fg_name="default"
             [[ "$bg_name" == "default" ]] && display_bg_name="default"
 
-            info="(BG Standard ${display_bg_name}, FG Standard ${display_fg_name})"
+            info="(BG standard-${display_bg_name}, FG standard-${display_fg_name})"
 
             # Construct escape sequence, handling empty codes
             esc_seq=""
             [[ -n "$fg_code" ]] && esc_seq="${fg_code}"
-            [[ -n "$bg_code" ]] && { [[ -n "$esc_seq" ]] && esc_seq+=";" ; esc_seq+="${bg_code}"; }
+            [[ -n "$bg_code" ]] && {
+                [[ -n "$esc_seq" ]] && esc_seq+=";"
+                esc_seq+="${bg_code}"
+            }
 
             # Print selected format columns with padding
             for format_name in "${SELECTED_COLUMNS[@]}"; do
@@ -196,15 +199,14 @@ if [[ "$USE_COLUMNS" == true ]]; then
 
             # Print Info column and newline
             printf "%s\n" "$info"
-         done
-     done
-
+        done
+    done
 
     # Bright Color Combinations
     echo -e "\n--- Columnar Display of Bright Colors and Basic Formats ---"
     # Print header row dynamically
     HEADER_FORMAT=""
-    for (( i=0; i<NUM_COLUMNS; i++ )); do
+    for ((i = 0; i < NUM_COLUMNS; i++)); do
         HEADER_FORMAT+="%-*s"
     done
     HEADER_FORMAT+="%s\n" # For the Color Setting column
@@ -218,7 +220,7 @@ if [[ "$USE_COLUMNS" == true ]]; then
     printf "$HEADER_FORMAT" "${printf_args[@]}"
 
     # Print separator line dynamically
-    for (( i=0; i<NUM_COLUMNS; i++ )); do
+    for ((i = 0; i < NUM_COLUMNS; i++)); do
         printf "%0.s-" $(seq 1 $COLUMN_WIDTH)
     done
     printf "%0.s-" $(seq 1 40) # Separator for the info column
@@ -239,17 +241,20 @@ if [[ "$USE_COLUMNS" == true ]]; then
             [[ "$fg_name" == "default" ]] && display_fg_name="default"
             [[ "$bg_name" == "default" ]] && display_bg_name="default"
 
-            info="(BG Bright ${display_bg_name}, FG Bright ${display_fg_name})"
+            info="(BG bright-${display_bg_name}, FG bright-${display_fg_name})"
 
             # Construct escape sequence, handling empty codes
             esc_seq=""
             [[ -n "$fg_code" ]] && esc_seq="${fg_code}"
-            [[ -n "$bg_code" ]] && { [[ -n "$esc_seq" ]] && esc_seq+=";" ; esc_seq+="${bg_code}"; }
+            [[ -n "$bg_code" ]] && {
+                [[ -n "$esc_seq" ]] && esc_seq+=";"
+                esc_seq+="${bg_code}"
+            }
 
             # Print selected format columns with padding
             for format_name in "${SELECTED_COLUMNS[@]}"; do
                 format_code="${ALL_FORMATS[$format_name]}"
-                 # Special handling for Hidden text
+                # Special handling for Hidden text
                 text_to_print="$SAMPLE_TEXT"
                 [[ "$format_name" == "Hidden" ]] && text_to_print="Hidden Text"
 
@@ -264,9 +269,8 @@ if [[ "$USE_COLUMNS" == true ]]; then
 
             # Print Info column and newline
             printf "%s\n" "$info"
-         done
-     done
-
+        done
+    done
 
 else
     # Original single-line output
@@ -276,10 +280,10 @@ else
     for format_name in "Normal" "Bold" "Italic" "Underline"; do
         format_code=""
         case "$format_name" in
-            "Normal") format_code="${NORMAL}";;
-            "Bold") format_code="${BOLD}";;
-            "Italic") format_code="${ITALIC}";;
-            "Underline") format_code="${UNDERLINE}";;
+        "Normal") format_code="${NORMAL}" ;;
+        "Bold") format_code="${BOLD}" ;;
+        "Italic") format_code="${ITALIC}" ;;
+        "Underline") format_code="${UNDERLINE}" ;;
         esac
 
         echo -e "\n--- Format: $format_name ---"
@@ -299,13 +303,13 @@ else
 
         # Standard Foreground and Background Combinations
         echo -e "\n"
-         for fg_name in "${!standard_colors_fg[@]}"; do
+        for fg_name in "${!standard_colors_fg[@]}"; do
             fg_code="${standard_colors_fg[$fg_name]}"
-             for bg_name in "${!standard_colors_bg[@]}"; do
-                 bg_code="${standard_colors_bg[$bg_name]}"
-                 print_single_line "$format_code" "$format_name" "$fg_code" "$bg_code" "$fg_name" "$bg_name" "Standard"
-             done
-         done
+            for bg_name in "${!standard_colors_bg[@]}"; do
+                bg_code="${standard_colors_bg[$bg_name]}"
+                print_single_line "$format_code" "$format_name" "$fg_code" "$bg_code" "$fg_name" "$bg_name" "Standard"
+            done
+        done
     done
 
     # Add other formats section for single-line output
@@ -316,32 +320,31 @@ else
     echo -e "${HIDDEN}Hidden Text${NORMAL} (Hidden, BG default, FG default)"
     echo -e "${STRIKETHROUGH}${SAMPLE_TEXT}${NORMAL} (Strikethrough, BG default, FG default)"
 
-
     echo -e "\n--- Bright Colors ---"
 
     # Bright Foreground Colors (default background)
     echo -e "\n--- Bright Foreground Colors ---"
     for fg_name in "${!bright_colors_fg[@]}"; do
         fg_code="${bright_colors_fg[$fg_name]}"
-        print_single_line "" "Normal" "$fg_code" "" "Bright ${fg_name}" "default" "Bright"
+        print_single_line "" "Normal" "$fg_code" "" "bright-${fg_name}" "default" "Bright"
     done
 
     # Bright Background Colors (default foreground)
     echo -e "\n--- Bright Background Colors ---"
     for bg_name in "${!bright_colors_bg[@]}"; do
         bg_code="${bright_colors_bg[$bg_name]}"
-        print_single_line "" "Normal" "" "$bg_code" "default" "Bright ${bg_name}" "Bright"
+        print_single_line "" "Normal" "" "$bg_code" "default" "bright-${bg_name}" "Bright"
     done
 
     # Bright Foreground and Background Combinations
     echo -e "\n--- Bright Foreground and Background Combinations ---"
-     for fg_name in "${!bright_colors_fg[@]}"; do
+    for fg_name in "${!bright_colors_fg[@]}"; do
         fg_code="${bright_colors_fg[$fg_name]}"
-         for bg_name in "${!bright_colors_bg[@]}"; do
-             bg_code="${bright_colors_bg[$bg_name]}"
-             print_single_line "" "Normal" "$fg_code" "$bg_code" "Bright ${fg_name}" "Bright ${bg_name}" "Bright"
-         done
-     done
+        for bg_name in "${!bright_colors_bg[@]}"; do
+            bg_code="${bright_colors_bg[$bg_name]}"
+            print_single_line "" "Normal" "$fg_code" "$bg_code" "bright-${fg_name}" "bright-${bg_name}" "Bright"
+        done
+    done
 
     # Removed the duplicate "Other Formats" section from here as it was added earlier
 

@@ -1,0 +1,156 @@
+#!/bin/bash
+# colors3.x - A shell script to define ANSI color codes for terminal output.
+#
+# CONVERTED from ZSH color definitions to a bash-compatible format.
+# Original source at https://github.com/zsh-users/zsh/blob/master/Functions/Misc/colors
+
+if [[ "$1" == "--help" ]] || [[ $# -ne 1 ]]; then
+    echo "Usage: $0 [--help] [--init-bash]"
+    echo "  --init-bash: Configure env variables for color codes that match zsh."
+    exit 0
+fi
+if [[ "$1" == "--init-bash" ]]; then
+    cat <<"EOF"
+# Declare variables
+declare -g -x -A color colour fg fg_bold fg_no_bold bg bg_bold bg_no_bold
+declare -g -x lc rc reset_color bold_color
+
+# Define color mappings
+color=(
+# Codes listed in this array are from ECMA-48, Section 8.3.117, p. 61.
+# Those that are commented out are not widely supported or aren't closely
+# enough related to color manipulation, but are included for completeness.
+
+# Attribute codes:
+  [00]=none                 # [20]=gothic
+  [01]=bold                 # [21]=double-underline
+  [02]=faint                  [22]=normal
+  [03]=italic                 [23]=no-italic         # no-gothic
+  [04]=underline              [24]=no-underline
+  [05]=blink                  [25]=no-blink
+# [06]=fast-blink           # [26]=proportional
+  [07]=reverse                [27]=no-reverse
+# [07]=standout             # [27]=no-standout
+  [08]=conceal                [28]=no-conceal
+# [09]=strikethrough        # [29]=no-strikethrough
+
+# Font selection:
+# [10]=font-default
+# [11]=font-first
+# [12]=font-second
+# [13]=font-third
+# [14]=font-fourth
+# [15]=font-fifth
+# [16]=font-sixth
+# [17]=font-seventh
+# [18]=font-eighth
+# [19]=font-ninth
+
+# Text color codes:
+  [30]=black                  [40]=bg-black
+  [31]=red                    [41]=bg-red
+  [32]=green                  [42]=bg-green
+  [33]=yellow                 [43]=bg-yellow
+  [34]=blue                   [44]=bg-blue
+  [35]=magenta                [45]=bg-magenta
+  [36]=cyan                   [46]=bg-cyan
+  [37]=white                  [47]=bg-white
+# [38]=iso-8613-6           # [48]=bg-iso-8613-6
+  [39]=default                [49]=bg-default
+
+# Other codes:
+# [50]=no-proportional
+# [51]=border-rectangle
+# [52]=border-circle
+# [53]=overline
+# [54]=no-border
+# [55]=no-overline
+# [56]=through [59]=reserved
+
+# Ideogram markings:
+# [60]=underline-or-right
+# [61]=double-underline-or-right
+# [62]=overline-or-left
+# [63]=double-overline-or-left
+# [64]=stress
+# [65]=no-ideogram-marking
+
+# Bright color codes (xterm extension)
+  [90]=bright-gray            [100]=bg-bright-gray
+  [91]=bright-red             [101]=bg-bright-red
+  [92]=bright-green           [102]=bg-bright-green
+  [93]=bright-yellow          [103]=bg-bright-yellow
+  [94]=bright-blue            [104]=bg-bright-blue
+  [95]=bright-magenta         [105]=bg-bright-magenta
+  [96]=bright-cyan            [106]=bg-bright-cyan
+  [97]=bright-white           [107]=bg-bright-white
+)
+
+# A word about black and white:  The "normal" shade of white is really a
+# very pale grey on many terminals; to get truly white text, you have to
+# use bold white, and to get a truly white background you have to use
+# bold reverse white bg-xxx where xxx is your desired foreground color
+# (and which means the foreground is also bold).
+
+# Reverse mapping (value to key)
+for key in "${!color[@]}"; do
+  num_key="${key#0}"  # Remove leading zeros
+  color["${color[$key]}"]="$key"
+  if [[ $num_key -ge 30 && $num_key -le 37 || $num_key -ge 90 && $num_key -le 97 ]]; then
+    color["fg-${color[$key]}"]="$key"
+  fi
+  if [[ $num_key -ge 40 && $num_key -le 47 || $num_key -ge 100 && $num_key -le 107 ]]; then
+    color["bg-${color[$key]}"]="$key"
+  fi
+done
+
+# Add grey/gray synonyms
+color[gray]="${color[black]}"
+color[fg-gray]="${color[fg - black]}"
+color[bg-gray]="${color[bg - black]}"
+color[bright-grey]="${color[bright - gray]}"
+color[fg-bright-grey]="${color[fg - bright - gray]}"
+color[bg-bright-grey]="${color[bg - bright - gray]}"
+
+# Assistance for the colo(u)r-blind.
+
+for k in '' fg- bg-; do
+  color[${k}bright-grey]=${color[${k}bright - gray]}
+done
+
+# Create 'colour' as a synonym for 'color'
+colour=("${color[@]}")
+
+# The following are terminal escape sequences used by colored prompt themes.
+
+lc=$'\e['
+rc='m'  # Standard ANSI terminal escape values
+
+reset_color="$lc${color[none]}$rc"
+bold_color="$lc${color[bold]}$rc"
+
+# Foreground colors
+for key in "${!color[@]}"; do
+  [[ $key == fg-* ]] || continue
+  name="${key#fg-}"
+  fg[$name]="$lc${color[$key]}$rc"
+  fg_bold[$name]="$lc${color[bold]};${color[$key]}$rc"
+  fg_no_bold[$name]="$lc${color[normal]};${color[$key]}$rc"
+done
+
+# Background colors
+for key in "${!color[@]}"; do
+  [[ $key == bg-* ]] || continue
+  name="${key#bg-}"
+  bg[$name]="$lc${color[$key]}$rc"
+  bg_bold[$name]="$lc${color[bold]};${color[$key]}$rc"
+  bg_no_bold[$name]="$lc${color[normal]};${color[$key]}$rc"
+done
+
+EOF
+fi
+# Make variables readonly
+#readonly -A color colour fg fg_bold fg_no_bold bg bg_bold bg_no_bold
+#readonly lc rc reset_color bold_color
+
+# neovim:disable_autoformat
