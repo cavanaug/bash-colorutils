@@ -113,13 +113,13 @@ print_single_line() {
 
     local info=""
     if [[ -z "$fg_code" && -z "$bg_code" ]]; then
-         info="(FG default, BG default)"
+         info="(BG default, FG default)"
     elif [[ -z "$fg_code" ]]; then
-         info="(FG default, BG ${bg_info})"
+         info="(BG ${bg_info}, FG default)"
     elif [[ -z "$bg_code" ]]; then
-         info="(FG ${fg_info}, BG default)"
+         info="(BG default, FG ${fg_info})"
     else
-         info="(FG ${fg_info}, BG ${bg_info})"
+         info="(BG ${bg_info}, FG ${fg_info})"
     fi
 
 
@@ -171,7 +171,7 @@ if [[ "$USE_COLUMNS" == true ]]; then
             [[ "$fg_name" == "default" ]] && display_fg_name="default"
             [[ "$bg_name" == "default" ]] && display_bg_name="default"
 
-            info="(FG Standard ${display_fg_name}, BG Standard ${display_bg_name})"
+            info="(BG Standard ${display_bg_name}, FG Standard ${display_fg_name})"
 
             # Construct escape sequence, handling empty codes
             esc_seq=""
@@ -239,7 +239,7 @@ if [[ "$USE_COLUMNS" == true ]]; then
             [[ "$fg_name" == "default" ]] && display_fg_name="default"
             [[ "$bg_name" == "default" ]] && display_bg_name="default"
 
-            info="(FG Bright ${display_fg_name}, BG Bright ${display_bg_name})"
+            info="(BG Bright ${display_bg_name}, FG Bright ${display_fg_name})"
 
             # Construct escape sequence, handling empty codes
             esc_seq=""
@@ -310,11 +310,11 @@ else
 
     # Add other formats section for single-line output
     echo -e "\n--- Other Formats (default colors) ---"
-    echo -e "${DIM}${SAMPLE_TEXT}${NORMAL} (Dim, FG default, BG default)"
-    echo -e "${BLINK}${SAMPLE_TEXT}${NORMAL} (Blink, FG default, BG default)"
-    echo -e "${REVERSE}${SAMPLE_TEXT}${NORMAL} (Reverse, FG default, BG default)"
-    echo -e "${HIDDEN}Hidden Text${NORMAL} (Hidden, FG default, BG default)"
-    echo -e "${STRIKETHROUGH}${SAMPLE_TEXT}${NORMAL} (Strikethrough, FG default, BG default)"
+    echo -e "${DIM}${SAMPLE_TEXT}${NORMAL} (Dim, BG default, FG default)"
+    echo -e "${BLINK}${SAMPLE_TEXT}${NORMAL} (Blink, BG default, FG default)"
+    echo -e "${REVERSE}${SAMPLE_TEXT}${NORMAL} (Reverse, BG default, FG default)"
+    echo -e "${HIDDEN}Hidden Text${NORMAL} (Hidden, BG default, FG default)"
+    echo -e "${STRIKETHROUGH}${SAMPLE_TEXT}${NORMAL} (Strikethrough, BG default, FG default)"
 
 
     echo -e "\n--- Bright Colors ---"
@@ -346,8 +346,8 @@ else
     # Removed the duplicate "Other Formats" section from here as it was added earlier
 
     echo -e "\n--- Combined Formats (default colors unless specified) ---"
-    echo -e "${BOLD}${UNDERLINE}${SAMPLE_TEXT}${NORMAL} (Bold, Underlined, FG default, BG default)"
-    echo -e "${ITALIC}${BOLD}\e[31m${SAMPLE_TEXT}${NORMAL} (Bold, Italic, Red FG, BG default)" # Combine with color
+    echo -e "${BOLD}${UNDERLINE}${SAMPLE_TEXT}${NORMAL} (Bold, Underlined, BG default, FG default)"
+    echo -e "${ITALIC}${BOLD}\e[31m${SAMPLE_TEXT}${NORMAL} (Bold, Italic, BG default, Red FG)" # Combine with color
 
     echo -e "\n--- End of Samples ---"
 
